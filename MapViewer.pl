@@ -72,9 +72,6 @@ my @colors = ("#EE5C42","#27D683","#FFA500","#E94B3C","#ECDB54");
 my $middle_point //= "F";   # straight link or not 
 my $remove_file_suffix = 'T';
 
-$mapInput = '8K_SNP.txt,20K_SNP.txt';
-$synInput = 'GDDH13.txt'; 
-
 my @synFiles = split(/,/,$synInput) if $synInput;
 my @gmapFiles = split(/,/,$mapInput) if $mapInput;
 
