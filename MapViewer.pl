@@ -392,7 +392,7 @@ sub add_rectangle_to_svg{
 __DATA__
 
 
-version: v0.2 (03/09/2018)
+version: v0.3 (03/09/2018)
 
 Useage:
 	
@@ -418,5 +418,5 @@ options:
 		gap file:
 			<chr_id>\t<gap start position>\t<gap length>
 			
-
+			
 
