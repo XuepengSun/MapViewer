@@ -280,7 +280,8 @@ sub file_processing{
 			}
 			else{
 				my $y = $chr_pos_on_y;
-				push @{$plot{$chr}{'rect'}},join("_",($x,$y,$chr_width,$i,$chr_fill_opacity,$col,$chr_stroke_width));
+				my $rect_x = $direction eq 'left' ? $x-$chr_width : $x;
+				push @{$plot{$chr}{'rect'}},join("_",($rect_x ,$y,$chr_width,$i,$chr_fill_opacity,$col,$chr_stroke_width));
 				#data for text plot
 				my $y_text = $y + $i + $text_ver_dist_to_plot;
 				my $x_text = $direction eq 'left' ? $x - $chr_width / 2 : $x + $chr_width / 2;
@@ -392,7 +393,7 @@ sub add_rectangle_to_svg{
 __DATA__
 
 
-version: v0.3 (03/09/2018)
+version: v0.4 (03/09/2018)
 
 Useage:
 	
@@ -419,4 +420,4 @@ options:
 			<chr_id>\t<gap start position>\t<gap length>
 			
 			
-
+	
