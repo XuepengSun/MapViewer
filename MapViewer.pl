@@ -3,7 +3,7 @@ use SVG;
 use Getopt::Long;
 use List::Util qw(min max sum);
 
-my ($synInput,$gapInput,$mapInput,$help,%chr_MAP,$svg,$group,%texts,%tar_chr_size,%ref_chr_size,%map_size);
+my ($synInput,$gapInput,$mapInput,$help,%chr_MAP,$svg,$group,%texts,%tar_chr_size,%ref_chr_size,%map_size,@right_most);
 
 GetOptions ("syn=s" => \$synInput,    # synteny file, can be none
             "map=s" => \$mapInput,   # string
@@ -13,6 +13,7 @@ or die("Error in command line arguments\n");
 
 unless(($synInput || $mapInput) && !$help && $gapInput ){print <DATA>;exit}
 
+###################### parameters for display ##################
 # set canvas size
 my $canvas_width //= 1500;
 my $canvas_height //= 1500;
@@ -71,6 +72,22 @@ my @colors = ("#EE5C42","#27D683","#FFA500","#E94B3C","#ECDB54");
 # set display
 my $middle_point //= "F";   # straight link or not 
 my $remove_file_suffix = 'T';
+my $add_chr_scale = 'T';
+
+# set chromosome scalar 
+my $chr_scale_dist_to_left = 70;
+my $chr_scale_main_tick_width = 30;
+my $chr_scale_minor_tick_width = 15;
+my $chr_scale_main_font_size = 30;
+my $chr_scale_stroke_width = 4;
+my $chr_scale_stroke_color = "grey";
+my $chr_scale_stroke_opacity = 1;
+my $chr_scale_num_dist = 30;
+my $chr_scale_col = "#696969";
+my $chr_base = 1000000;    # if kb set 1000
+
+
+##########################################################
 
 my @synFiles = split(/,/,$synInput) if $synInput;
 my @gmapFiles = split(/,/,$mapInput) if $mapInput;
@@ -122,15 +139,11 @@ while(<GAP>){
 	my $width = $chr_height*$s[2]/$tar_chr_size{$s[0]} > $gap_stroke_width ? $chr_height*$s[2]/$tar_chr_size{$s[0]}:$gap_stroke_width;
 	my $x0 = $chr_pos_on_x;
 	my $x1 = $chr_pos_on_x + $chr_width;
-	
-	
 	push @{$final_plot{$s[0]}{'line'}},join("_",($x0,$x1,$y0,$y0,$gap_stroke_color,$width,$gap_stroke_opacity,'gap'));
-
-#	push @{$final_plot{$s[0]}{'polygon'}},join("_",($x0,$x1,$x1,$x0,$start,$start,$start+$length,$start+$length,$gap_color,$gap_stroke_opacity,$gap_fill_opacity));
 }
 close GAP;
 
-
+## final output
 foreach my $chrm(keys %chr_MAP){
 	next if !$final_plot{$chrm};
 	# initialize SVG object
@@ -178,6 +191,9 @@ foreach my $chrm(keys %chr_MAP){
 		$add_text -> text('fill' =>$text_color,'font-size'=>$texts{$chrm}{$_}->{'size'},
 					style=>{'text-anchor'=>$texts{$chrm}{$_}->{'anchor'}}
 					)->cdata($texts{$chrm}{$_}->{'text'});
+					
+		# store values for scale plot
+		push @right_most,$texts{$chrm}{$_}->{'x'};
 	}
 
 	#plot text for target chromosome
@@ -191,6 +207,42 @@ foreach my $chrm(keys %chr_MAP){
 					style=>{'text-anchor'=>'middle'}
 					)->cdata("$chrm ($chrSize Mb)");
 	
+	push @right_most,($x,$chr_pos_on_x+$chr_width);
+	
+
+	## plot chromosome scalar;
+	if($add_chr_scale eq 'T'){
+		my $scalar_left_most = max(@right_most) + $chr_scale_dist_to_left;
+		my $gn_unit = $tar_chr_size{$chrm} / $chr_base;
+		my $diff = (int($gn_unit / 3) + 1) * 3 - $gn_unit;
+		my $scalar_length = $diff <= 1 ? (int($gn_unit / 3) + 1) * 3 : int($gn_unit / 3) * 3 ;
+		my $scalar_height = $chr_height * $scalar_length / ($tar_chr_size{$chrm}/$chr_base);
+		
+		my @tick_straight = ($scalar_left_most,$scalar_left_most,$chr_pos_on_y,$chr_pos_on_y+$scalar_height,$chr_scale_stroke_color,$chr_scale_stroke_width,$chr_scale_stroke_opacity,"scalar");
+		add_line_to_svg(\@tick_straight);
+	
+		for (my $i=0;$i<=$scalar_length;$i++){
+			if($i % 3 == 0){
+				my $chr_tick_x_main = $scalar_left_most + $chr_scale_main_tick_width;
+				my $chr_tick_y_main = $scalar_height * $i / $scalar_length + $chr_pos_on_y;
+				my @tick_main = ($scalar_left_most,$chr_tick_x_main,$chr_tick_y_main,$chr_tick_y_main,$chr_scale_stroke_color,$chr_scale_stroke_width,$chr_scale_stroke_opacity,"scalar");
+				add_line_to_svg(\@tick_main);
+				
+				# add numbers
+				my $t_x = $chr_tick_x_main+$chr_scale_num_dist;
+				my $t_y = $chr_tick_y_main + 10;
+				$add_text = $svg->group(transform =>"translate($t_x,$t_y) rotate(0)");
+				$add_text -> text('fill' =>$chr_scale_col,'font-size'=>$chr_scale_main_font_size,
+				style=>{'text-anchor'=>'middle'})->cdata("$i");
+			}
+			else{
+				my $chr_tick_x_minor = $scalar_left_most + $chr_scale_minor_tick_width;
+				my $chr_tick_y_minor = $scalar_height * $i / $scalar_length + $chr_pos_on_y;
+				my @tick_minor = ($scalar_left_most,$chr_tick_x_minor,$chr_tick_y_minor,$chr_tick_y_minor,$chr_scale_stroke_color,$chr_scale_stroke_width,$chr_scale_stroke_opacity,"scalar");
+				add_line_to_svg(\@tick_minor);
+			}
+		}
+	}
 	
 	open OUT,">$chrm.svg";
 	print OUT $svg->xmlify;
@@ -393,7 +445,7 @@ sub add_rectangle_to_svg{
 __DATA__
 
 
-version: v0.4 (03/09/2018)
+version: v0.5 (03/09/2018)
 
 Useage:
 	
